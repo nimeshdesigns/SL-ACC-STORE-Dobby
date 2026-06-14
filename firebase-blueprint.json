@@ -1,0 +1,196 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User profile with role details and contact numbers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "The UID of the user from Firebase Auth" },
+        "email": { "type": "string", "format": "email", "description": "User email address" },
+        "name": { "type": "string", "description": "User display name" },
+        "role": { "type": "string", "enum": ["member", "admin", "owner"], "description": "Access control role" },
+        "status": { "type": "string", "enum": ["active", "banned"], "description": "State of account access" },
+        "photoURL": { "type": "string", "description": "Profile picture URL" },
+        "whatsappNumber": { "type": "string", "description": "Client whatsapp phone number" },
+        "callNumber": { "type": "string", "description": "Client voice call phone number" },
+        "createdAt": { "type": "string", "format": "date-time", "description": "Profile creation timestamp" }
+      },
+      "required": ["id", "email", "name", "role", "status"]
+    },
+    "Catalog": {
+      "title": "Freefire Account Catalog",
+      "description": "Information about Freefire accounts listed for sale",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "images": { "type": "array" },
+        "server": { "type": "string" },
+        "level": { "type": "number" },
+        "guns": { "type": "string" },
+        "fashion": { "type": "string" },
+        "emotes": { "type": "string" },
+        "description": { "type": "string" },
+        "price": { "type": "number" },
+        "status": { "type": "string", "enum": ["available", "sold", "pending_verification"] },
+        "sellerId": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "images", "server", "level", "price", "status"]
+    },
+    "CatalogCredentials": {
+      "title": "Freefire Account Credentials",
+      "description": "Sensitive login credentials for listed accounts, kept separate for confidentiality",
+      "type": "object",
+      "properties": {
+        "catalogId": { "type": "string" },
+        "loginMethod": { "type": "string", "description": "E.g., Google, Facebook, VK" },
+        "username": { "type": "string" },
+        "password": { "type": "string" },
+        "backupCodes": { "type": "string" },
+        "sellerWhatsapp": { "type": "string" }
+      },
+      "required": ["catalogId", "loginMethod", "username", "password"]
+    },
+    "Order": {
+      "title": "User Purchase Order",
+      "description": "A payment transaction or listing submission details",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "catalogId": { "type": "string" },
+        "catalogTitle": { "type": "string" },
+        "catalogPrice": { "type": "number" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientEmail": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "callNumber": { "type": "string" },
+        "receiptImage": { "type": "string", "description": "Receipt image path or base64 data" },
+        "type": { "type": "string", "enum": ["buy", "sell"] },
+        "status": { "type": "string", "enum": ["pending", "accepted", "declined", "delivered"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "deliveryDetails": { "type": "string", "description": "Login details delivered by admin" },
+        "adminWhatsapp": { "type": "string", "description": "Admin Whatsapp for support" }
+      },
+      "required": ["id", "clientId", "clientEmail", "status", "type", "createdAt"]
+    },
+    "Message": {
+      "title": "In-App Client Message",
+      "description": "Direct message notifications sent inside the app to clients",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string", "description": "Target client ID or 'all' for global announcements" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "clientId", "title", "content", "createdAt"]
+    },
+    "SiteSettings": {
+      "title": "Site Configuration Settings",
+      "description": "General portal custom branding, bank infos, and social targets",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "siteName": { "type": "string" },
+        "siteLogo": { "type": "string" },
+        "bankDetails": { "type": "string" },
+        "ezCashDetails": { "type": "string" },
+        "otherPaymentDetails": { "type": "string" },
+        "whatsappContact": { "type": "string" },
+        "callContact": { "type": "string" },
+        "facebookLink": { "type": "string" },
+        "youtubeLink": { "type": "string" },
+        "tiktokLink": { "type": "string" },
+        "discordLink": { "type": "string" },
+        "lightboxEnabled": { "type": "boolean" },
+        "lightboxImage": { "type": "string" },
+        "lightboxTitle": { "type": "string" },
+        "lightboxDescription": { "type": "string" }
+      },
+      "required": ["id", "siteName"]
+    },
+    "Visit": {
+      "title": "Visit Entry",
+      "description": "Daily visit count representation",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "description": "Format YYYY-MM-DD" },
+        "count": { "type": "number" }
+      },
+      "required": ["id", "count"]
+    },
+    "Review": {
+      "title": "Customer Review",
+      "description": "Site review submitted by verified buyers",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "clientId": { "type": "string" },
+        "clientName": { "type": "string" },
+        "clientPhoto": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "status": { "type": "string", "enum": ["pending", "approved", "rejected"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "clientId", "clientName", "rating", "comment", "status", "createdAt"]
+    },
+    "Tutorial": {
+      "title": "Video Tutorial Guide",
+      "description": "System video guides and tutorials detailing site workflows",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "youtubeId": { "type": "string" },
+        "youtubeLink": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "title", "youtubeId", "youtubeLink", "createdAt"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "Store individual users"
+    },
+    "/catalogs/{catalogId}": {
+      "schema": "Catalog",
+      "description": "Interactive catalogues of listed items"
+    },
+    "/catalogCredentials/{catalogId}": {
+      "schema": "CatalogCredentials",
+      "description": "Split credentials mapping of a listed item, restricted to authorized roles"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Order records representing purchases and account submission workflows"
+    },
+    "/messages/{messageId}": {
+      "schema": "Message",
+      "description": "Individual notifications and conversations"
+    },
+    "/settings/{settingsId}": {
+      "schema": "SiteSettings",
+      "description": "Single site settings configuration (document id 'site')"
+    },
+    "/tutorials/{tutorialId}": {
+      "schema": "Tutorial",
+      "description": "Video tutorials of gaming account transfer instructions"
+    },
+    "/visits/{visitId}": {
+      "schema": "Visit",
+      "description": "Daily counters tracking visitor traffic patterns"
+    },
+    "/reviews/{reviewId}": {
+      "schema": "Review",
+      "description": "User feedback comments left detailing site operation"
+    }
+  }
+}

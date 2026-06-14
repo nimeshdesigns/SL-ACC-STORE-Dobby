@@ -1,0 +1,143 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Primitives
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isHardcodedAdmin() {
+      return isSignedIn() && 'email' in request.auth.token && (
+        request.auth.token.email.lower() == 'nimesh.designs.site@gmail.com' ||
+        request.auth.token.email.lower() == 'staff.admin@example.com' ||
+        request.auth.token.email.lower() == 'admin@example.com'
+      );
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        isHardcodedAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && (
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'admin' || 
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'owner'
+        ))
+      );
+    }
+
+    function isOwner() {
+      return isSignedIn() && (
+        isHardcodedAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('role', 'member') == 'owner')
+      );
+    }
+
+    function isUserActive() {
+      return isSignedIn() && (
+        isHardcodedAdmin() ||
+        (exists(/databases/$(database)/documents/users/$(request.auth.uid)) && 
+         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('status', 'active') == 'active')
+      );
+    }
+
+    // Users collection rules
+    match /users/{userId} {
+      allow read: if isSignedIn() && (request.auth.uid == userId || isAdmin());
+      allow create: if isSignedIn() && request.auth.uid == userId && (
+        (request.resource.data.role == 'member' && request.resource.data.status == 'active') ||
+        (request.resource.data.role == 'owner' && (
+          (request.auth.token.email == 'nimesh.designs.site@gmail.com' && request.auth.token.email_verified == true) ||
+          request.resource.data.email == 'nimesh.designs.site@gmail.com'
+        )) ||
+        (request.resource.data.role == 'admin' && (
+          request.resource.data.email == 'staff.admin@example.com' ||
+          request.resource.data.email == 'admin@example.com'
+        ))
+      );
+      allow update: if isSignedIn() && (
+        // Owners can promote / demote, change status or edit admin profiles
+        isOwner() ||
+        // Admins can ban/unban members but cannot modify owner accounts or change roles to owner/admin
+        (isAdmin() && request.resource.data.role == resource.data.role && resource.data.role != 'owner') ||
+        // Members can modify their own details but cannot elevate their role, status, or email
+        (request.auth.uid == userId && 
+         request.resource.data.role == resource.data.role && 
+         request.resource.data.status == resource.data.status && 
+         request.resource.data.email == resource.data.email)
+      );
+      allow delete: if isOwner() && userId != request.auth.uid;
+    }
+
+    // Freefire Catalog listings (catalogs)
+    match /catalogs/{catalogId} {
+      allow read: if true;
+      allow create: if isSignedIn() && isUserActive() && (
+        isAdmin() || 
+        (request.resource.data.sellerId == request.auth.uid && request.resource.data.status == 'pending_verification')
+      );
+      allow update: if isSignedIn() && isUserActive() && (
+        isAdmin() || 
+        (resource.data.sellerId == request.auth.uid && resource.data.status == 'pending_verification' && request.resource.data.sellerId == request.auth.uid)
+      );
+      allow delete: if isAdmin();
+    }
+
+    // Freefire Catalog credentials (separate collection for extreme leak prevention)
+    match /catalogCredentials/{catalogId} {
+      allow read: if isAdmin() || (isSignedIn() && get(/databases/$(database)/documents/catalogs/$(catalogId)).data.sellerId == request.auth.uid);
+      allow create: if isSignedIn() && isUserActive() && (
+        isAdmin() || 
+        (get(/databases/$(database)/documents/catalogs/$(catalogId)).data.sellerId == request.auth.uid)
+      );
+      allow update, delete: if isAdmin();
+    }
+
+    // Purchase & Submission Orders
+    match /orders/{orderId} {
+      allow read: if isAdmin() || (isSignedIn() && resource.data.clientId == request.auth.uid);
+      allow create: if isSignedIn() && isUserActive() && request.resource.data.clientId == request.auth.uid;
+      allow update: if isSignedIn() && isUserActive() && (
+        isAdmin() ||
+        (resource.data.clientId == request.auth.uid && resource.data.status == 'pending' && request.resource.data.status == 'pending')
+      );
+      allow delete: if isAdmin();
+    }
+
+    // System message inbox
+    match /messages/{messageId} {
+      allow read: if isSignedIn() && (resource.data.clientId == request.auth.uid || resource.data.clientId == 'all' || isAdmin());
+      allow create, update, delete: if isAdmin();
+    }
+
+    // Portal Settings
+    match /settings/{settingsId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Interactive Tutorials
+    match /tutorials/{tutorialId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // Site Visits counter (daily)
+    match /visits/{visitId} {
+      allow read: if true;
+      allow create, update: if true;
+    }
+
+    // Reviews (Feedback) moderation
+    match /reviews/{reviewId} {
+      allow read: if resource.data.status == 'approved' || isAdmin() || (isSignedIn() && resource.data.clientId == request.auth.uid);
+      allow create: if isSignedIn() && isUserActive() && request.resource.data.clientId == request.auth.uid && request.resource.data.status == 'pending';
+      allow update: if isAdmin() || (isSignedIn() && isUserActive() && resource.data.clientId == request.auth.uid && resource.data.status == 'pending');
+      allow delete: if isAdmin() || (isSignedIn() && resource.data.clientId == request.auth.uid);
+    }
+  }
+}
